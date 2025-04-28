@@ -9,7 +9,7 @@ export function Clouds() {
             className="absolute bg-white/80 rounded-full blur-md"
             style={{
               width: `${100 + Math.random() * 100}px`,
-              height: `${80 + Math.random() * 60}px`,
+              height: `${3 + Math.random() * 60}px`,
               left: `${i * 25 - 10}%`,
               top: `${Math.random() * 20}%`,
               animation: `float ${5 + Math.random() * 5}s ease-in-out infinite alternate`,
