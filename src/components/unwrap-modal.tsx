@@ -43,14 +43,14 @@ export default function UnwrapModal({ isOpen, onClose }: UnwrapModalProps) {
     try {
       setIsLoading(true)
 
-      // Verify the gift code
-      const result = await redeemGift({
-        code: giftCode,
-        recipientAddress: address || "",
-      })
+      //// Verify the gift code
+      //const result = await redeemGift({
+      //  code: giftCode,
+      //  recipientAddress: address || "",
+      //})
 
-      // Start unwrapping animation
-      setGiftDetails(result)
+      //// Start unwrapping animation
+      //setGiftDetails(result)
       setIsLoading(false)
       setIsUnwrapping(true)
 

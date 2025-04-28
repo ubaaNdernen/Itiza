@@ -3,16 +3,13 @@
 import { useState, useEffect } from "react"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent } from "@/components/ui/card"
-import { Gift, Wallet, Phone, Bell } from "lucide-react"
+import { Gift, Phone} from "lucide-react"
 import GiftModal from "@/components/gift-modal"
 import UnwrapModal from "@/components/unwrap-modal"
-//import WalletConnect from "@/components/wallet-connect"
 import { useWallet } from "@/hooks/use-wallet"
-import { Badge } from "@/components/ui/badge"
 import { motion } from "framer-motion"
 import { Hearts } from "@/components/hearts"
 import { Clouds } from "@/components/clouds"
-import { CustomWalletMultiButton } from "@/components/walletConnect";
 import { Header } from "@/components/Header"
 
 export default function Home() {
