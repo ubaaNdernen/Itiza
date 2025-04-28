@@ -6,12 +6,13 @@ import { Card, CardContent } from "@/components/ui/card"
 import { Gift, Wallet, Phone, Bell } from "lucide-react"
 import GiftModal from "@/components/gift-modal"
 import UnwrapModal from "@/components/unwrap-modal"
-import WalletConnect from "@/components/wallet-connect"
+//import WalletConnect from "@/components/wallet-connect"
 import { useWallet } from "@/hooks/use-wallet"
 import { Badge } from "@/components/ui/badge"
 import { motion } from "framer-motion"
 import { Hearts } from "@/components/hearts"
 import { Clouds } from "@/components/clouds"
+import { CustomWalletMultiButton } from "@/components/walletConnect";
 
 export default function Home() {
   const [isGiftModalOpen, setIsGiftModalOpen] = useState(false)
@@ -55,7 +56,7 @@ export default function Home() {
               </Badge>
             )}
           </div>
-          <WalletConnect />
+          <CustomWalletMultiButton />
         </div>
       </header>
 
@@ -100,18 +101,22 @@ export default function Home() {
             </CardContent>
           </Card>
 
-          <Card className="overflow-hidden shadow-lg hover:shadow-xl transition-shadow">
-            <CardContent className="p-0">
-              <div className="bg-gradient-to-r from-rose-400 to-red-400 p-6 text-white">
-                <Wallet className="h-12 w-12 mb-4" />
-                <h3 className="text-xl font-bold mb-2">Connect Wallet</h3>
-                <p className="mb-4">Connect your wallet to start sending gifts securely.</p>
-                <Button onClick={connect} className="bg-white text-pink-700 hover:bg-gray-100" disabled={isConnected}>
-                  {isConnected ? "Wallet Connected" : "Connect Wallet"}
-                </Button>
-              </div>
-            </CardContent>
-          </Card>
+            <Card className="overflow-hidden shadow-lg hover:shadow-xl transition-shadow">
+                <CardContent className="p-0">
+                    <div className="bg-gradient-to-r from-rose-400 to-red-400 p-6 text-white">
+                        <Gift className="h-12 w-12 mb-4" />
+                        <h3 className="text-xl font-bold mb-2">Gift Token</h3>
+                        <p className="mb-4">Send cryptocurrency tokens as gifts to your loved ones.</p>
+                        <div className="bg-white/20 text-white font-medium py-2 px-4 rounded-md inline-flex items-center">
+                            <span className="mr-2">Coming Soon</span>
+                            <span className="relative flex h-3 w-3">
+                                <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-white opacity-75"></span>
+                                <span className="relative inline-flex rounded-full h-3 w-3 bg-white"></span>
+                            </span>
+                        </div>
+                    </div>
+                </CardContent>
+            </Card>
         </div>
 
         <div className="mt-16 text-center">

@@ -1,183 +1,207 @@
-"use client"
+﻿"use client"
 
-import type React from "react"
-
-import { useState } from "react"
-import { motion, AnimatePresence } from "framer-motion"
+import { useState, ChangeEvent } from "react"
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { useToast } from "@/components/ui/use-toast"
-import { useWallet } from "@/hooks/use-wallet"
-import { Loader2, CheckCircle2 } from "lucide-react"
-import { createGift } from "@/lib/gift-service"
+import { Loader2 } from "lucide-react"
+import { TokenAddress, TOKEN_LIST } from "@/config/tokens"
+import { FrampRelayer } from "framp-relay-sdk"
+import { useConnection, useWallet } from "@solana/wallet-adapter-react"
+import { Transaction } from "@solana/web3.js"
+
+const AIRBILLS_SECRET_KEY = import.meta.env.VITE_PUBLIC_AIRBILLS_SECRET_KEY
+const SOLSCAN_API_KEY = import.meta.env.VITE_PUBLIC_SOLSCAN_API_KEY
 
 interface GiftModalProps {
-  isOpen: boolean
-  onClose: () => void
+    isOpen: boolean
+    onClose: () => void
 }
 
 export default function GiftModal({ isOpen, onClose }: GiftModalProps) {
-  const [phoneNumber, setPhoneNumber] = useState("")
-  const [amount, setAmount] = useState("")
-  const [isLoading, setIsLoading] = useState(false)
-  const [isSuccess, setIsSuccess] = useState(false)
-  const [giftCode, setGiftCode] = useState("")
-  const { isConnected, address, signMessage } = useWallet()
-  const { toast } = useToast()
+    const { connection } = useConnection()
+    const wallet = useWallet()
+    const { toast } = useToast()
 
-  const handleSubmit = async (e: React.FormEvent) => {
-    e.preventDefault()
+    const [phoneNumber, setPhoneNumber] = useState("")
+    const [amount, setAmount] = useState("")
+    const [selectedToken, setSelectedToken] = useState<TokenAddress>(TOKEN_LIST[0].address)
+    const [isProcessing, setIsProcessing] = useState(false)
+    const [message, setMessage] = useState("")
 
-    if (!isConnected) {
-      toast({
-        title: "Wallet not connected",
-        description: "Please connect your wallet to send a gift",
-        variant: "destructive",
-      })
-      return
+    const relayer = new FrampRelayer({
+        solscanApiKey: SOLSCAN_API_KEY,
+        airbillsSecretKey: AIRBILLS_SECRET_KEY,
+    })
+
+    const handlePhoneChange = (e: ChangeEvent<HTMLInputElement>) => {
+        setPhoneNumber(e.target.value.replace(/[^\d]/g, ""))
     }
 
-    if (!phoneNumber || !amount) {
-      toast({
-        title: "Missing information",
-        description: "Please fill in all fields",
-        variant: "destructive",
-      })
-      return
+    const pollTransactionStatus = async (txId: string) => {
+        const maxAttempts = 3
+        let attempts = 0
+
+        while (attempts < maxAttempts) {
+            try {
+                const status = await relayer.confirmAirtimeTransaction(txId)
+                if (status?.success) return status
+                await new Promise(resolve => setTimeout(resolve, 5000))
+                attempts++
+            } catch (error) {
+                console.error("Polling error:", error)
+                throw error
+            }
+        }
+        throw new Error("Transaction status check timed out")
     }
 
-    try {
-      setIsLoading(true)
+    const handleSubmit = async (e: React.FormEvent) => {
+        e.preventDefault()
+        setMessage("")
 
-      // This would be an actual transaction in production
-      const signature = await signMessage(`Send ${amount} airtime to ${phoneNumber}`)
+        if (!wallet.publicKey) {
+            setMessage("Please connect your wallet first")
+            return
+        }
 
-      // Create the gift in the backend
-      const result = await createGift({
-        senderAddress: address!,
-        phoneNumber,
-        amount: Number.parseFloat(amount),
-        signature,
-      })
+        if (!phoneNumber || !amount || Number(amount) <= 0) {
+            setMessage("Please enter valid phone number and amount")
+            return
+        }
 
-      setGiftCode(result.code)
-      setIsSuccess(true)
-    } catch (error) {
-      console.error("Error creating gift:", error)
-      toast({
-        title: "Transaction failed",
-        description: "There was an error processing your gift",
-        variant: "destructive",
-      })
-    } finally {
-      setIsLoading(false)
+        setIsProcessing(true)
+
+        try {
+            const result = await relayer.sendAirtime({
+                phoneNumber,
+                amount: Number(amount),
+                token: selectedToken,
+                userAddress: wallet.publicKey.toString()
+            })
+
+            const latestBlockhash = await connection.getLatestBlockhash("confirmed")
+
+            if (result.swapTransaction && result.airtimeTransaction) {
+                const signedSwap = await wallet.signTransaction!(result.swapTransaction)
+                const swapSignature = await connection.sendRawTransaction(signedSwap.serialize())
+                await connection.confirmTransaction({ signature: swapSignature, ...latestBlockhash }, "confirmed")
+
+                const signedAirtime = await wallet.signTransaction!(result.airtimeTransaction)
+                const airtimeSignature = await connection.sendRawTransaction(signedAirtime.serialize())
+                await connection.confirmTransaction({ signature: airtimeSignature, ...latestBlockhash }, "confirmed")
+            } else {
+                const transaction = Transaction.from(Buffer.from(result.txBase64, "base64"))
+                const signed = await wallet.signTransaction!(transaction)
+                const signature = await connection.sendRawTransaction(signed.serialize())
+                await connection.confirmTransaction({ signature, ...latestBlockhash }, "confirmed")
+            }
+
+            if (!result?.id) {
+                throw new Error("Transaction ID not found in response");
+            }
+
+            await pollTransactionStatus(result.id)
+            setMessage("Airtime sent successfully! 🎉")
+        } catch (error) {
+            console.error("Transaction error:", error)
+            setMessage(error instanceof Error ? error.message : "Failed to send airtime")
+        } finally {
+            setIsProcessing(false)
+        }
     }
-  }
 
-  const handleClose = () => {
-    if (!isLoading) {
-      setPhoneNumber("")
-      setAmount("")
-      setIsSuccess(false)
-      setGiftCode("")
-      onClose()
+    const handleClose = () => {
+        if (!isProcessing) {
+            setPhoneNumber("")
+            setAmount("")
+            setSelectedToken(TOKEN_LIST[0].address)
+            setMessage("")
+            onClose()
+        }
     }
-  }
 
-  return (
-    <Dialog open={isOpen} onOpenChange={handleClose}>
-      <DialogContent className="sm:max-w-md">
-        <DialogHeader>
-          <DialogTitle className="text-center text-2xl font-bold text-pink-800">
-            {isSuccess ? "Gift Created Successfully!" : "Send Airtime Gift"}
-          </DialogTitle>
-        </DialogHeader>
+    return (
+        <Dialog open={isOpen} onOpenChange={handleClose}>
+            <DialogContent className="sm:max-w-md bg-pink-50">
+                <DialogHeader>
+                    <DialogTitle className="text-center text-2xl font-bold text-pink-800">
+                        Send Airtime Gift
+                    </DialogTitle>
+                </DialogHeader>
 
-        <AnimatePresence mode="wait">
-          {isSuccess ? (
-            <motion.div
-              key="success"
-              initial={{ opacity: 0, y: 20 }}
-              animate={{ opacity: 1, y: 0 }}
-              exit={{ opacity: 0, y: -20 }}
-              className="py-6 flex flex-col items-center"
-            >
-              <CheckCircle2 className="h-16 w-16 text-green-500 mb-4" />
-              <p className="text-center mb-4">
-                Your gift has been created successfully! Share this code with the recipient:
-              </p>
-              <div className="bg-gray-100 p-4 rounded-md text-center mb-4 w-full">
-                <span className="text-xl font-mono font-bold tracking-wider">{giftCode}</span>
-              </div>
-              <p className="text-sm text-gray-500 text-center">
-                The recipient can use this code to unwrap their gift on the Itiza platform.
-              </p>
-            </motion.div>
-          ) : (
-            <motion.form
-              key="form"
-              initial={{ opacity: 0, y: 20 }}
-              animate={{ opacity: 1, y: 0 }}
-              exit={{ opacity: 0, y: -20 }}
-              onSubmit={handleSubmit}
-              className="space-y-4 py-4"
-            >
-              <div className="space-y-2">
-                <Label htmlFor="phone">Recipient's Phone Number</Label>
-                <Input
-                  id="phone"
-                  placeholder="+1234567890"
-                  value={phoneNumber}
-                  onChange={(e) => setPhoneNumber(e.target.value)}
-                  disabled={isLoading}
-                />
-              </div>
+                <form onSubmit={handleSubmit} className="space-y-4 py-4">
+                    <div className="space-y-2">
+                        <Label>Recipient's Phone Number</Label>
+                        <Input
+                            placeholder="1234567890"
+                            value={phoneNumber}
+                            onChange={handlePhoneChange}
+                            disabled={isProcessing}
+                        />
+                    </div>
 
-              <div className="space-y-2">
-                <Label htmlFor="amount">Amount</Label>
-                <Input
-                  id="amount"
-                  type="number"
-                  placeholder="10.00"
-                  min="1"
-                  step="0.01"
-                  value={amount}
-                  onChange={(e) => setAmount(e.target.value)}
-                  disabled={isLoading}
-                />
-              </div>
+                    <div className="space-y-2">
+                        <Label>Amount</Label>
+                        <Input
+                            type="number"
+                            placeholder="10.00"
+                            value={amount}
+                            onChange={(e) => setAmount(e.target.value)}
+                            disabled={isProcessing}
+                        />
+                    </div>
 
-              <DialogFooter className="pt-4">
-                <Button
-                  type="button"
-                  variant="outline"
-                  onClick={handleClose}
-                  disabled={isLoading}
-                  className="w-full sm:w-auto"
-                >
-                  Cancel
-                </Button>
-                <Button
-                  type="submit"
-                  disabled={isLoading || !isConnected}
-                  className="w-full sm:w-auto bg-gradient-to-r from-pink-600 to-rose-500 hover:from-pink-700 hover:to-rose-600"
-                >
-                  {isLoading ? (
-                    <>
-                      <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                      Processing...
-                    </>
-                  ) : (
-                    "Send Gift"
-                  )}
-                </Button>
-              </DialogFooter>
-            </motion.form>
-          )}
-        </AnimatePresence>
-      </DialogContent>
-    </Dialog>
-  )
+                    <div className="space-y-2">
+                        <Label>Token</Label>
+                        <select
+                            value={selectedToken}
+                            onChange={(e) => setSelectedToken(e.target.value as TokenAddress)}
+                            className="flex h-10 w-full items-center justify-between rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50"
+                        >
+                            {TOKEN_LIST.map((token) => (
+                                <option key={token.address} value={token.address}>
+                                    {token.label}
+                                </option>
+                            ))}
+                        </select>
+                    </div>
+
+                    {message && (
+                        <div className={`text-center ${message.includes("successfully") ? "text-green-600" : "text-red-500"
+                            }`}>
+                            {message}
+                        </div>
+                    )}
+
+                    <DialogFooter>
+                        <Button
+                            type="button"
+                            variant="outline"
+                            onClick={handleClose}
+                            disabled={isProcessing}
+                        >
+                            Cancel
+                        </Button>
+                        <Button
+                            type="submit"
+                            disabled={isProcessing || !wallet.connected}
+                            className="bg-pink-600 hover:bg-pink-700 text-white"
+                        >
+                            {isProcessing ? (
+                                <>
+                                    <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                                    Processing...
+                                </>
+                            ) : (
+                                "Send Gift"
+                            )}
+                        </Button>
+                    </DialogFooter>
+                </form>
+            </DialogContent>
+        </Dialog>
+    )
 }

@@ -81,7 +81,7 @@ export default function UnwrapModal({ isOpen, onClose }: UnwrapModalProps) {
 
   return (
     <Dialog open={isOpen} onOpenChange={handleClose}>
-      <DialogContent className="sm:max-w-md">
+      <DialogContent className="sm:max-w-md bg-pink-50">
         <DialogHeader>
           <DialogTitle className="text-center text-2xl font-bold text-pink-800">
             {isSuccess ? "Gift Unwrapped!" : isUnwrapping ? "Unwrapping Gift..." : "Redeem Your Gift"}
