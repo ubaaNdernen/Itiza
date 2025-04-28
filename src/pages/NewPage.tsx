@@ -11,6 +11,8 @@ import { motion } from "framer-motion"
 import { Hearts } from "@/components/hearts"
 import { Clouds } from "@/components/clouds"
 import { Header } from "@/components/Header"
+import FeaturedGifts from "@/components/featured-gifts"
+import HowItWorks from "@/components/how-it-works"
 
 export default function Home() {
   const [isGiftModalOpen, setIsGiftModalOpen] = useState(false)
@@ -104,32 +106,11 @@ export default function Home() {
             </Card>
         </div>
 
-        <div className="mt-16 text-center">
-          <h3 className="text-2xl font-bold text-pink-800 mb-4">How It Works</h3>
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-8 max-w-4xl mx-auto">
-            <div className="flex flex-col items-center">
-              <div className="w-16 h-16 rounded-full bg-pink-100 flex items-center justify-center mb-4">
-                <span className="text-xl font-bold text-pink-700">1</span>
-              </div>
-              <h4 className="text-lg font-semibold mb-2">Connect & Send</h4>
-              <p className="text-pink-600">Connect your wallet, enter recipient's phone number and amount</p>
-            </div>
-            <div className="flex flex-col items-center">
-              <div className="w-16 h-16 rounded-full bg-pink-100 flex items-center justify-center mb-4">
-                <span className="text-xl font-bold text-pink-700">2</span>
-              </div>
-              <h4 className="text-lg font-semibold mb-2">Share Code</h4>
-              <p className="text-pink-600">Recipient receives a unique gift code</p>
-            </div>
-            <div className="flex flex-col items-center">
-              <div className="w-16 h-16 rounded-full bg-pink-100 flex items-center justify-center mb-4">
-                <span className="text-xl font-bold text-pink-700">3</span>
-              </div>
-              <h4 className="text-lg font-semibold mb-2">Unwrap & Enjoy</h4>
-              <p className="text-pink-600">They unwrap the gift and receive airtime instantly</p>
-            </div>
-          </div>
-        </div>
+        {/* Featured Gifts Section */}
+        <FeaturedGifts />
+
+        {/* How It Works Section */}
+        <HowItWorks />
       </main>
 
       <GiftModal isOpen={isGiftModalOpen} onClose={() => setIsGiftModalOpen(false)} />
