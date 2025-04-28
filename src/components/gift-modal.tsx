@@ -155,7 +155,7 @@ export default function GiftModal({ isOpen, onClose }: GiftModalProps) {
                     </div>
 
                     <div className="space-y-2">
-                        <Label>Token</Label>
+                        <Label>Payment Token</Label>
                         <select
                             value={selectedToken}
                             onChange={(e) => setSelectedToken(e.target.value as TokenAddress)}
