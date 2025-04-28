@@ -5,6 +5,7 @@ import GiftAirtime from "./pages/GiftAirtime";
 import GiftToken from "./pages/GiftToken";
 import WalletContextProvider from "./components/walletConnect";
 import { Layout } from "./components/Layout";
+import NewPage from "./pages/NewPage";
 
 function App() {
   return (
@@ -13,6 +14,7 @@ function App() {
         <Layout>
           <Routes>
             <Route path="/" element={<Dashboard />} />
+            <Route path="/new" element={<NewPage />} />
             <Route
               path="/gift-airtime"
               element={
